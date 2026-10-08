@@ -1,0 +1,21 @@
+# Tiny C++ / JUCE Glossary
+
+- **class** — a custom type that groups data and functions.
+- **object** — one actual instance of a class.
+- **member variable** — data stored inside an object.
+- **function/method** — code that performs a job.
+- **header (.h)** — declarations and reusable code.
+- **source (.cpp)** — implementation code.
+- **reference (`&`)** — another name for an existing object; changing it changes the original.
+- **pointer (`*`)** — stores an address.
+- **const** — promises not to change a value through that name.
+- **array** — a fixed group of values.
+- **vector** — a resizable list.
+- **namespace** — a named container that prevents name collisions.
+- **lambda** — a small unnamed function, often used for callbacks.
+- **sample rate** — audio samples per second, commonly 44100 or 48000.
+- **audio block** — a small batch of samples passed to the plugin.
+- **MIDI** — messages such as note-on/note-off; MIDI itself is not audio.
+- **DSP** — Digital Signal Processing: math that changes audio.
+- **parameter** — a value the DAW/UI can control, automate, and save.
+- **attachment** — JUCE's connection between a UI control and a parameter.
