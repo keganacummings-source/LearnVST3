@@ -1,0 +1,87 @@
+name: Build BBGVST FX VST3
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            artifact: BBGVST-Windows
+          - os: macos-latest
+            artifact: BBGVST-macOS
+          - os: ubuntu-latest
+            artifact: BBGVST-Linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            libasound2-dev libjack-jackd2-dev \
+            libcurl4-openssl-dev libfreetype6-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev \
+            libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
+            mesa-common-dev libglu1-mesa-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $vst = Get-ChildItem build -Recurse -Directory -Filter "BBGVST.vst3" | Select-Object -First 1
+          $exe = Get-ChildItem build -Recurse -File -Filter "BBGVST FX.exe" | Select-Object -First 1
+          if ($vst) { Copy-Item $vst.FullName dist/BBGVST.vst3 -Recurse -Force }
+          if ($exe) { Copy-Item $exe.FullName dist/ -Force }
+          if (-not $vst -or -not $exe) { throw "Windows artifacts were not found." }
+
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          find build -name "BBGVST.vst3" -exec cp -R {} dist/ \;
+          find build -name "BBGVST FX.app" -exec cp -R {} dist/ \;
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          find build -name "BBGVST.vst3" -exec cp -R {} dist/ \;
+          find build -type f -perm /111 -name "BBGVST FX" -exec cp {} dist/ \;
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Release Windows build on tag
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
